@@ -2,16 +2,18 @@
 #include <vector>
 #include <SDL.h>
 #include <algorithm>
+#include <random>
 #include <iostream>
+
 using namespace std;
+
 const int TEXTURE_H = 2000;
 const int TEXTURE_W = 2000;
 const int SCREEN_H = 640;
 const int SCREEN_W = 640;
 
-int main()
-{
-    SDL_Rect source{0, 0, SCREEN_W / 4, SCREEN_H / 4}; //
+int main() {
+    SDL_Rect source{0, 0, SCREEN_W / 4, SCREEN_H / 4};
     SDL_Rect dest{10, 10, SCREEN_W - 20, SCREEN_H - 20};
     SDL_Event e;
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -26,23 +28,22 @@ int main()
                                      TEXTURE_W, TEXTURE_H);
 
     std::vector<SDL_Point> pv;
-    for (int i = 0; i < 10000; i++)
-    {
-        pv.emplace_back(SDL_Point{rand() % TEXTURE_H, rand() % TEXTURE_W}); // 32k 767
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, TEXTURE_H - 1);
+
+    for (int i = 0; i < 10000; i++) {
+        pv.emplace_back(SDL_Point{dis(gen), dis(gen)});
     }
-    auto running = true;
-    while (running)
-    {
-        while (SDL_PollEvent(&e))
-        {
-            if (e.type == SDL_QUIT)
-            {
+
+    bool running = true;
+    while (running) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
                 running = false;
             }
-            if (e.type == SDL_KEYDOWN)
-            {
-                switch (e.key.keysym.sym)
-                {
+            if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
                 case SDLK_UP:
                     source.y -= 3;
                     break;
@@ -64,45 +65,35 @@ int main()
                     source.h /= 2;
                     break;
                 }
-            }
-            else if (e.type == SDL_MOUSEWHEEL)
-            {
-                if (e.wheel.y > 0)
-                {
-                    if (source.w * 2 <= TEXTURE_W && source.h * 2 <= TEXTURE_H)
-                    {
+            } else if (e.type == SDL_MOUSEWHEEL) {
+                if (e.wheel.y > 0) {
+                    if (source.w * 2 <= TEXTURE_W && source.h * 2 <= TEXTURE_H) {
                         source.w *= 2;
                         source.h *= 2;
                     }
-                }
-                else if (e.wheel.y < 0)
-                {
-                    if (source.h / 2 > 0 && source.w / 2 > 0)
-                    {
+                } else if (e.wheel.y < 0) {
+                    if (source.h / 2 > 0 && source.w / 2 > 0) {
                         source.h /= 2;
                         source.w /= 2;
                     }
                 }
-            }
-            else if (e.type == SDL_MOUSEMOTION)
-            {
-                if (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(SDL_BUTTON_LEFT))
-                {
+            } else if (e.type == SDL_MOUSEMOTION) {
+                if (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(SDL_BUTTON_LEFT)) {
                     source.x = std::min(TEXTURE_W - source.w, std::max(0, source.x + e.motion.xrel));
                     source.y = std::min(TEXTURE_H - source.h, std::max(0, source.y + e.motion.yrel));
                 }
             }
         }
-        // clear texture
+
+        // Clear texture
         SDL_SetRenderTarget(renderer, texture);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
 
-        std::for_each(pv.begin(), pv.end(), [](auto &item)
-                      {
-            item.x += rand() % 3 - 1 ;
-            item.y += rand() % 3 - 1; });
-        std::cout << rand << endl;
+        std::for_each(pv.begin(), pv.end(), &dis, &gen {
+            item.x += dis(gen) % 3 - 1;
+            item.y += dis(gen) % 3 - 1;
+        });
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderDrawPoints(renderer, pv.data(), pv.size());
@@ -115,5 +106,11 @@ int main()
 
         SDL_Delay(50);
     }
+
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
     return 0;
 }
